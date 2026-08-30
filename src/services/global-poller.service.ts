@@ -129,7 +129,12 @@ export class GlobalPortalPoller {
   /**
    * Get poller state info
    */
-  public getStatus() {
+  public getStatus(): {
+    lastPolledAt: string | null;
+    nextAllowedPollAt: string | null;
+    cachedCount: number;
+    isPollingActive: boolean;
+  } {
     return {
       lastPolledAt: this.lastPolledAt ? new Date(this.lastPolledAt).toISOString() : null,
       nextAllowedPollAt: this.nextAllowedPollAt ? new Date(this.nextAllowedPollAt).toISOString() : null,
