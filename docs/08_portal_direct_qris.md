@@ -7,8 +7,14 @@ Integrate dynamic QRIS payments directly using your existing GoBiz Merchant acco
 ## 💡 How It Works
 
 1. **Authentication (2 Options)**:
-   - **Option A (Recommended)**: Cookie `access_token` extracted from browser (`F12 -> Application -> Cookies -> access_token`).
-   - **Option B**: `email` and `password` with auto-login via GoBiz portal APIs.
+   - **Option A: Email & Password**:
+     - Standard GoBiz accounts log in via phone SMS/OTP.
+     - To enable email & password login, visit [portal.gofoodmerchant.co.id/id/account/profile](https://portal.gofoodmerchant.co.id/id/account/profile) and perform **Reset Password** / set up a password first.
+     - Once set, use your merchant account email and the new password.
+   - **Option B: Cookie Access Token**:
+     - Log in to [portal.gofoodmerchant.co.id](https://portal.gofoodmerchant.co.id) on a **desktop/laptop browser** (mobile browsers cannot inspect cookies easily).
+     - Open Developer Tools (`F12`), go to **Application** / **Storage** ➔ **Cookies** ➔ `https://portal.gofoodmerchant.co.id`.
+     - Copy the cookie value named `access_token`.
 2. **Dynamic QRIS Generation**:
    - Converts your store's static `QRIS_STRING` to dynamic QRIS (`010212`).
    - Injects Tag 54 with `amountToPay = baseAmount + fee + uniqueCode (2 or 3 digits)`.

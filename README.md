@@ -39,6 +39,10 @@ npm install github:xirf/gobiz-merchant-sdk
 
 ### 1. Dynamic QRIS Generation & Portal Settlement Matching
 
+#### Portal Credential Setup:
+- **Email & Password**: Standard GoBiz accounts use phone OTP. Visit [portal.gofoodmerchant.co.id/id/account/profile](https://portal.gofoodmerchant.co.id/id/account/profile) and complete **Reset Password** to enable password login.
+- **Cookie Token**: Log into [portal.gofoodmerchant.co.id](https://portal.gofoodmerchant.co.id) on a desktop browser, open Developer Tools (`F12`), go to **Application** ➔ **Cookies**, and copy the `access_token` value.
+
 ```typescript
 import { GoBizPortal } from '@xirf/gobiz-merchant-sdk'
 
