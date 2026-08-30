@@ -1,0 +1,72 @@
+{
+  "name": "@xirf/gobiz-merchant-sdk",
+  "version": "0.1.0",
+  "description": "Modern TypeScript / JavaScript SDK for GoBiz Open API & Direct Portal (GoTo Financial / Gojek) with dynamic QRIS payments, 3-digit unique code, and auto-settlement poller",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./constants": {
+      "types": "./dist/constants/index.d.ts",
+      "import": "./dist/constants/index.mjs",
+      "require": "./dist/constants/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.mjs",
+      "require": "./dist/types/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "mod.ts",
+    "jsr.json",
+    "README.md",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "prepare": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "dashboard": "bun --cwd dashboard run dev"
+  },
+  "keywords": [
+    "gobiz",
+    "gojek",
+    "goto",
+    "gopay",
+    "qris",
+    "gofood",
+    "mokapos",
+    "sdk",
+    "typescript",
+    "indonesia",
+    "payments"
+  ],
+  "author": "xirf",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xirf/gobiz-merchant-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xirf/gobiz-merchant-sdk/issues"
+  },
+  "homepage": "https://github.com/xirf/gobiz-merchant-sdk#readme",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^22.13.9",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
