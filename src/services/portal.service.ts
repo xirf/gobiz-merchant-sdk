@@ -187,19 +187,20 @@ export class GoBizPortalService {
 
     const headers = this.getPortalHeaders();
 
-    // Step 1: Validate email
-    const validation = await this.postJson(`${BASE_URL}/goid/login/request`, headers, {
-      email: targetEmail,
-      login_type: 'password',
-      client_id: CLIENT_ID,
-    });
-
-    if (validation?.errors?.length > 0) {
-      const msg = validation.errors[0]?.message || 'Email validation failed';
-      throw new Error(`GoBiz Email Validation Error: ${msg}`);
+    // Step 1: Request login step (GoID schema requires payload under 'data')
+    try {
+      await this.postJson(`${BASE_URL}/goid/login/request`, headers, {
+        client_id: CLIENT_ID,
+        data: {
+          email: targetEmail,
+          login_type: 'password',
+        },
+      });
+    } catch {
+      // Continue to direct password grant if login/request is optional
     }
 
-    // Step 2: Request token
+    // Step 2: Request access token with password grant
     const tokenRes = await this.postJson(`${BASE_URL}/goid/token`, headers, {
       client_id: CLIENT_ID,
       grant_type: 'password',
@@ -214,11 +215,12 @@ export class GoBizPortalService {
       throw new Error(`GoBiz Login Error: ${msg}`);
     }
 
-    if (!tokenRes.access_token) {
+    const accessToken = tokenRes.access_token || tokenRes.data?.access_token;
+    if (!accessToken) {
       throw new Error('GoBiz did not return an access_token');
     }
 
-    this.token = tokenRes.access_token;
+    this.token = accessToken;
     return this.token!;
   }
 
