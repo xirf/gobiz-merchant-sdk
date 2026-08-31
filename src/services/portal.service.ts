@@ -87,6 +87,8 @@ export class GoBizPortalService {
   /**
    * Returns portal browser-mimicking headers for GoBiz web APIs
    */
+  private deviceId: string = crypto.randomUUID();
+
   private getPortalHeaders(accessToken?: string): Record<string, string> {
     const tokenToUse = accessToken || this.token;
     return {
@@ -103,16 +105,19 @@ export class GoBizPortalService {
       'Sec-Fetch-Mode': 'cors',
       'Sec-Fetch-Site': 'cross-site',
       'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
-      'X-AppVersion': 'platform-v3.119.0-eab7f749',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36',
+      'X-AppVersion': 'platform-v3.107.0-94ce5d57',
       'X-PhoneMake': 'Windows 10 64-bit',
-      'X-PhoneModel': 'Chrome 152.0.0.0 on Windows 10 64-bit',
+      'X-PhoneModel': 'Chrome 149.0.0.0 on Windows 10 64-bit',
       'X-Platform': 'Web',
       'X-User-Locale': 'en-US',
       'X-User-Type': 'merchant',
+      'sec-ch-ua': '"Google Chrome";v="149", "Chromium";v="149", "Not)A;Brand";v="24"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"Windows"',
       'x-DeviceOS': 'Web',
       'x-appId': 'go-biz-web-dashboard',
-      'x-uniqueid': crypto.randomUUID(),
+      'x-uniqueid': this.deviceId,
     };
   }
 
@@ -188,6 +193,28 @@ export class GoBizPortalService {
 
     const headers = this.getPortalHeaders();
 
+    // Step 1: Advisory validation check
+    try {
+      const validation = await this.postJson(`${BASE_URL}/goid/login/request`, headers, {
+        email: targetEmail,
+        login_type: 'password',
+        client_id: CLIENT_ID,
+      });
+
+      if (validation?.errors?.length > 0) {
+        const msg = validation.errors[0]?.message || '';
+        if (/terlalu banyak|too many|rate.?limit|coba lagi|try again/i.test(msg)) {
+          throw new Error(`GoBiz login rate-limited: ${msg}`);
+        }
+      }
+    } catch (err: any) {
+      if (err.message && /terlalu banyak|too many|rate.?limit|coba lagi|try again/i.test(err.message)) {
+        throw err;
+      }
+      // Non-fatal if login/request is advisory
+    }
+
+    // Step 2: Request token
     const tokenPayload = {
       client_id: CLIENT_ID,
       grant_type: 'password',
@@ -278,14 +305,15 @@ export class GoBizPortalService {
       }
     }
 
-    const from = options.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const to = options.to || new Date().toISOString();
+    const from =
+      options.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const to = options.to || new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 
     const queryParams = new URLSearchParams({
-      from,
-      to,
-      payment_types: 'QRIS,GOPAY,OFFLINE_CREDIT_CARD,OFFLINE_DEBIT_CARD',
-      statuses: 'SETTLEMENT,CAPTURE',
+      start_time: from,
+      end_time: to,
+      from: '0',
+      limit: '50',
     });
 
     if (merchantId) {
@@ -295,18 +323,24 @@ export class GoBizPortalService {
     const url = `${ANALYTICS_URL}?${queryParams.toString()}`;
     const res = await this.getJson(url, headers);
 
-    const rawList = Array.isArray(res) ? res : (res.data || res.transactions || []);
+    const rawList = Array.isArray(res) ? res : res.data || res.transactions || [];
 
-    return rawList.map((item: any) => ({
-      id: item.id || item.transaction_id,
-      order_id: item.order_id,
-      amount: Number(item.amount || item.gross_amount || 0),
-      payment_type: item.payment_type || 'QRIS',
-      status: item.status || 'SETTLEMENT',
-      transaction_time: item.transaction_time || item.created_at,
-      settlement_time: item.settlement_time || item.settlement_at,
-      outlet_id: item.outlet_id,
-    }));
+    return rawList.map((item: any) => {
+      const rawGross = Number(item.gross_amount ?? item.amount ?? 0);
+      // GoBiz analytics gross_amount is provided in cents (multiplied by 100)
+      const amount = rawGross >= 100000 ? Math.round(rawGross / 100) : rawGross;
+
+      return {
+        id: item.id || item.transaction_id,
+        order_id: item.order_id,
+        amount,
+        payment_type: (item.payment_type || 'QRIS').toUpperCase(),
+        status: (item.transaction_status || item.status || 'SETTLEMENT').toUpperCase(),
+        transaction_time: item.transaction_time || item.created_at,
+        settlement_time: item.settlement_time || item.settlement_at,
+        outlet_id: item.outlet_id,
+      };
+    });
   }
 
   /**
