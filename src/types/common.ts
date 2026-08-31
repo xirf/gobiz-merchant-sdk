@@ -19,9 +19,11 @@ export interface GoBizConfig {
 
 export interface GoBizApiErrorItem {
   code?: string;
-  message_title: string;
+  field?: string;
+  message_title?: string;
   message: string;
   message_severity?: 'error' | 'warning' | 'info';
+  [key: string]: any;
 }
 
 export interface GoBizApiResponse<T = any> {

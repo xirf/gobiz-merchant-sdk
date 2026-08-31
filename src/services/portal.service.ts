@@ -137,7 +137,7 @@ export class GoBizPortalService {
       }
 
       if (!response.ok) {
-        throw GoBizError.fromResponse(response.status, body);
+        throw GoBizError.fromResponse(response.status, body, url, 'POST');
       }
       return body;
     } finally {
@@ -166,7 +166,7 @@ export class GoBizPortalService {
       }
 
       if (!response.ok) {
-        throw GoBizError.fromResponse(response.status, body);
+        throw GoBizError.fromResponse(response.status, body, url, 'GET');
       }
       return body;
     } finally {
