@@ -1,6 +1,6 @@
 {
   "name": "@xirf/gobiz-merchant-sdk",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Modern TypeScript / JavaScript SDK for GoBiz Open API & Direct Portal (GoTo Financial / Gojek) with dynamic QRIS payments, 3-digit unique code, and auto-settlement poller",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

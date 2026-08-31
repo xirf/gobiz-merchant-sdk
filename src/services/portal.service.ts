@@ -190,14 +190,21 @@ export class GoBizPortalService {
 
     const headers = this.getPortalHeaders();
 
-    // Step 1: Request login step to obtain login_token
-    const loginRes = await this.postJson(`${BASE_URL}/goid/login/request`, headers, {
+    // Step 1: Request login step to obtain login_token (providing both root & data fields for maximum compatibility)
+    const loginPayload: any = {
       client_id: CLIENT_ID,
+      email: targetEmail,
+      username: targetEmail,
+      login_type: 'password',
+      country_code: '+62',
       data: {
         email: targetEmail,
+        username: targetEmail,
         login_type: 'password',
+        country_code: '+62',
       },
-    });
+    };
+    const loginRes = await this.postJson(`${BASE_URL}/goid/login/request`, headers, loginPayload);
 
     const loginData = loginRes?.data || loginRes;
     const loginToken =
@@ -211,6 +218,8 @@ export class GoBizPortalService {
     const tokenPayload: any = {
       client_id: CLIENT_ID,
       grant_type: 'password',
+      login_token: loginToken,
+      password: targetPassword,
       data: {
         login_token: loginToken,
         password: targetPassword,
