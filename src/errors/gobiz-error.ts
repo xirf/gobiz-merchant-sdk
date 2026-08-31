@@ -6,6 +6,7 @@ export class GoBizError extends Error {
   public readonly rawBody?: any;
   public readonly url?: string;
   public readonly method?: string;
+  public readonly payload?: any;
 
   constructor(
     message: string,
@@ -14,6 +15,7 @@ export class GoBizError extends Error {
     rawBody?: any,
     url?: string,
     method?: string,
+    payload?: any,
   ) {
     super(message);
     this.name = 'GoBizError';
@@ -22,12 +24,13 @@ export class GoBizError extends Error {
     this.rawBody = rawBody;
     this.url = url;
     this.method = method;
+    this.payload = payload;
 
     // Restore prototype chain
     Object.setPrototypeOf(this, GoBizError.prototype);
   }
 
-  static fromResponse(status: number, body: any, url?: string, method?: string): GoBizError {
+  static fromResponse(status: number, body: any, url?: string, method?: string, payload?: any): GoBizError {
     let message = `GoBiz API request failed with HTTP ${status}`;
     let errors: GoBizApiErrorItem[] = [];
 
@@ -58,7 +61,19 @@ export class GoBizError extends Error {
       message += ` [${method || 'REQUEST'} ${url}]`;
     }
 
-    return new GoBizError(message, status, errors, body, url, method);
+    // Sanitize password in payload before storing
+    let safePayload = payload;
+    if (payload && typeof payload === 'object') {
+      try {
+        safePayload = JSON.parse(JSON.stringify(payload));
+        if (safePayload.password) safePayload.password = '••••';
+        if (safePayload.data?.password) safePayload.data.password = '••••';
+      } catch {
+        safePayload = payload;
+      }
+    }
+
+    return new GoBizError(message, status, errors, body, url, method, safePayload);
   }
 
   [Symbol.for('nodejs.util.inspect.custom')](): string {
@@ -66,6 +81,7 @@ export class GoBizError extends Error {
       `${this.name}: ${this.message}\n` +
       `  Status: ${this.status}\n` +
       (this.url ? `  URL: ${this.method || 'REQUEST'} ${this.url}\n` : '') +
+      (this.payload ? `  Request Payload: ${JSON.stringify(this.payload, null, 2)}\n` : '') +
       `  Errors: ${JSON.stringify(this.errors, null, 2)}\n` +
       `  Raw Body: ${JSON.stringify(this.rawBody, null, 2)}`
     );

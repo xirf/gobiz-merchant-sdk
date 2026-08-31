@@ -70,8 +70,6 @@ export class GoBizPortalService {
     if (config.merchantId) {
       this.merchantId = config.merchantId;
     }
-
-    this.scheduleNextWindow();
   }
 
   private getRandomIntervalMs(): number {
@@ -91,11 +89,10 @@ export class GoBizPortalService {
    */
   private getPortalHeaders(accessToken?: string): Record<string, string> {
     const tokenToUse = accessToken || this.token;
-    return {
+    const headers: Record<string, string> = {
       Accept: 'application/json, text/plain, */*',
       'Accept-Language': 'id',
       'Authentication-Type': 'go-id',
-      Authorization: tokenToUse ? `Bearer ${tokenToUse}` : 'Bearer',
       'Content-Type': 'application/json',
       'Gojek-Country-Code': 'ID',
       'Gojek-Timezone': 'Asia/Jakarta',
@@ -113,6 +110,12 @@ export class GoBizPortalService {
       'x-appId': 'go-biz-web-dashboard',
       'x-uniqueid': crypto.randomUUID(),
     };
+
+    if (tokenToUse) {
+      headers.Authorization = `Bearer ${tokenToUse}`;
+    }
+
+    return headers;
   }
 
   private async postJson(url: string, headers: Record<string, string>, payload: any): Promise<any> {
@@ -137,7 +140,7 @@ export class GoBizPortalService {
       }
 
       if (!response.ok) {
-        throw GoBizError.fromResponse(response.status, body, url, 'POST');
+        throw GoBizError.fromResponse(response.status, body, url, 'POST', payload);
       }
       return body;
     } finally {
@@ -188,27 +191,37 @@ export class GoBizPortalService {
     const headers = this.getPortalHeaders();
 
     // Step 1: Request login step (GoID schema requires payload under 'data')
+    let loginToken: string | undefined;
     try {
-      await this.postJson(`${BASE_URL}/goid/login/request`, headers, {
+      const loginRes = await this.postJson(`${BASE_URL}/goid/login/request`, headers, {
         client_id: CLIENT_ID,
         data: {
           email: targetEmail,
           login_type: 'password',
         },
       });
+      loginToken = loginRes?.data?.login_token || loginRes?.data?.token || loginRes?.login_token;
     } catch {
       // Continue to direct password grant if login/request is optional
     }
 
-    // Step 2: Request access token with password grant
-    const tokenRes = await this.postJson(`${BASE_URL}/goid/token`, headers, {
+    // Step 2: Request access token with password grant (providing both root & data payload fields for compatibility)
+    const tokenPayload: any = {
       client_id: CLIENT_ID,
       grant_type: 'password',
+      email: targetEmail,
+      username: targetEmail,
+      password: targetPassword,
       data: {
         email: targetEmail,
+        username: targetEmail,
         password: targetPassword,
+        ...(loginToken ? { login_token: loginToken } : {}),
       },
-    });
+      ...(loginToken ? { login_token: loginToken } : {}),
+    };
+
+    const tokenRes = await this.postJson(`${BASE_URL}/goid/token`, headers, tokenPayload);
 
     if (tokenRes?.errors?.length > 0) {
       const msg = tokenRes.errors[0]?.message || 'Password authentication failed';
@@ -331,8 +344,8 @@ export class GoBizPortalService {
       return this.activePollPromise;
     }
 
-    // 2. Return cached mutations if within the randomized 30-60s window
-    if (!options.force && this.cachedTransactions.length > 0 && now < this.nextAllowedPollAt) {
+    // 2. Return cached mutations if within the randomized window after a previous poll
+    if (!options.force && this.lastPolledAt > 0 && now < this.nextAllowedPollAt) {
       return this.cachedTransactions;
     }
 
@@ -348,6 +361,11 @@ export class GoBizPortalService {
         this.notifyWatchers(list);
 
         return list;
+      } catch (err) {
+        // Backoff: schedule next window so concurrent caller ticks don't hammer upstream
+        this.lastPolledAt = Date.now();
+        this.scheduleNextWindow();
+        throw err;
       } finally {
         this.activePollPromise = null;
       }
