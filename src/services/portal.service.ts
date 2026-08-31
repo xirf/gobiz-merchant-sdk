@@ -89,10 +89,11 @@ export class GoBizPortalService {
    */
   private getPortalHeaders(accessToken?: string): Record<string, string> {
     const tokenToUse = accessToken || this.token;
-    const headers: Record<string, string> = {
+    return {
       Accept: 'application/json, text/plain, */*',
       'Accept-Language': 'id',
       'Authentication-Type': 'go-id',
+      Authorization: tokenToUse ? `Bearer ${tokenToUse}` : 'Bearer',
       'Content-Type': 'application/json',
       'Gojek-Country-Code': 'ID',
       'Gojek-Timezone': 'Asia/Jakarta',
@@ -102,20 +103,17 @@ export class GoBizPortalService {
       'Sec-Fetch-Mode': 'cors',
       'Sec-Fetch-Site': 'cross-site',
       'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-      'X-AppVersion': 'platform-v3.107.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
+      'X-AppVersion': 'platform-v3.119.0-eab7f749',
+      'X-PhoneMake': 'Windows 10 64-bit',
+      'X-PhoneModel': 'Chrome 152.0.0.0 on Windows 10 64-bit',
       'X-Platform': 'Web',
+      'X-User-Locale': 'en-US',
       'X-User-Type': 'merchant',
       'x-DeviceOS': 'Web',
       'x-appId': 'go-biz-web-dashboard',
       'x-uniqueid': crypto.randomUUID(),
     };
-
-    if (tokenToUse) {
-      headers.Authorization = `Bearer ${tokenToUse}`;
-    }
-
-    return headers;
   }
 
   private async postJson(url: string, headers: Record<string, string>, payload: any): Promise<any> {
@@ -190,38 +188,11 @@ export class GoBizPortalService {
 
     const headers = this.getPortalHeaders();
 
-    // Step 1: Request login step to obtain login_token (providing both root & data fields for maximum compatibility)
-    const loginPayload: any = {
-      client_id: CLIENT_ID,
-      email: targetEmail,
-      username: targetEmail,
-      login_type: 'password',
-      country_code: '+62',
-      data: {
-        email: targetEmail,
-        username: targetEmail,
-        login_type: 'password',
-        country_code: '+62',
-      },
-    };
-    const loginRes = await this.postJson(`${BASE_URL}/goid/login/request`, headers, loginPayload);
-
-    const loginData = loginRes?.data || loginRes;
-    const loginToken =
-      loginData?.login_token || loginData?.token || loginData?.request_id || loginData?.otp_token || loginData?.id;
-
-    if (!loginToken) {
-      throw new Error(`GoBiz login/request did not return a login_token. Response: ${JSON.stringify(loginRes)}`);
-    }
-
-    // Step 2: Request access token with password grant using the login_token
-    const tokenPayload: any = {
+    const tokenPayload = {
       client_id: CLIENT_ID,
       grant_type: 'password',
-      login_token: loginToken,
-      password: targetPassword,
       data: {
-        login_token: loginToken,
+        email: targetEmail,
         password: targetPassword,
       },
     };

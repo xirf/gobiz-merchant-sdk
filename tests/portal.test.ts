@@ -6,36 +6,23 @@ describe('GoBizPortal Direct Integration', () => {
     '00020101021126610014COM.GO-JEK.WWW01189360091430438058080210G7641517890303UMI51440014ID.CO.QRIS.WWW0215ID10190450190010303UMI5204581253033605802ID5907GoBiz6015Jakarta61051022062070703A0163045E1B';
 
   it('should authenticate using password flow', async () => {
-    let emailValidated = false;
     let tokenRequested = false;
 
     const mockFetch = mock(async (url: string, init: any) => {
       const body = JSON.parse(init.body);
 
-      if (url.includes('/goid/login/request')) {
-        emailValidated = true;
-        expect(body.data.email).toBe('merchant@example.com');
-        return new Response(
-          JSON.stringify({
-            success: true,
-            data: { login_token: 'portal_mock_login_token_123' },
-            errors: [],
-          }),
-          { status: 200 },
-        );
-      }
-
       if (url.includes('/goid/token')) {
         tokenRequested = true;
+        expect(body.client_id).toBe('go-biz-web-new');
         expect(body.grant_type).toBe('password');
-        expect(body.data.login_token).toBe('portal_mock_login_token_123');
+        expect(body.data.email).toBe('merchant@example.com');
         expect(body.data.password).toBe('mypassword123');
         return new Response(
           JSON.stringify({
             access_token: 'portal_mock_access_token_123',
             token_type: 'Bearer',
           }),
-          { status: 200 },
+          { status: 201 },
         );
       }
 
@@ -51,7 +38,6 @@ describe('GoBizPortal Direct Integration', () => {
 
     const token = await portal.getAccessToken();
     expect(token).toBe('portal_mock_access_token_123');
-    expect(emailValidated).toBe(true);
     expect(tokenRequested).toBe(true);
   });
 
