@@ -61,7 +61,7 @@ export class GoBizError extends Error {
     return new GoBizError(message, status, errors, body, url, method);
   }
 
-  [Symbol.for('nodejs.util.inspect.custom')]() {
+  [Symbol.for('nodejs.util.inspect.custom')](): string {
     return (
       `${this.name}: ${this.message}\n` +
       `  Status: ${this.status}\n` +
