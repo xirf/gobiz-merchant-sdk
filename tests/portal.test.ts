@@ -14,13 +14,21 @@ describe('GoBizPortal Direct Integration', () => {
 
       if (url.includes('/goid/login/request')) {
         emailValidated = true;
-        expect(body.email).toBe('merchant@example.com');
-        return new Response(JSON.stringify({ success: true, errors: [] }), { status: 200 });
+        expect(body.data.email).toBe('merchant@example.com');
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: { login_token: 'portal_mock_login_token_123' },
+            errors: [],
+          }),
+          { status: 200 },
+        );
       }
 
       if (url.includes('/goid/token')) {
         tokenRequested = true;
         expect(body.grant_type).toBe('password');
+        expect(body.data.login_token).toBe('portal_mock_login_token_123');
         expect(body.data.password).toBe('mypassword123');
         return new Response(
           JSON.stringify({

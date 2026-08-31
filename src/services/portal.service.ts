@@ -190,35 +190,31 @@ export class GoBizPortalService {
 
     const headers = this.getPortalHeaders();
 
-    // Step 1: Request login step (GoID schema requires payload under 'data')
-    let loginToken: string | undefined;
-    try {
-      const loginRes = await this.postJson(`${BASE_URL}/goid/login/request`, headers, {
-        client_id: CLIENT_ID,
-        data: {
-          email: targetEmail,
-          login_type: 'password',
-        },
-      });
-      loginToken = loginRes?.data?.login_token || loginRes?.data?.token || loginRes?.login_token;
-    } catch {
-      // Continue to direct password grant if login/request is optional
+    // Step 1: Request login step to obtain login_token
+    const loginRes = await this.postJson(`${BASE_URL}/goid/login/request`, headers, {
+      client_id: CLIENT_ID,
+      data: {
+        email: targetEmail,
+        login_type: 'password',
+      },
+    });
+
+    const loginData = loginRes?.data || loginRes;
+    const loginToken =
+      loginData?.login_token || loginData?.token || loginData?.request_id || loginData?.otp_token || loginData?.id;
+
+    if (!loginToken) {
+      throw new Error(`GoBiz login/request did not return a login_token. Response: ${JSON.stringify(loginRes)}`);
     }
 
-    // Step 2: Request access token with password grant (providing both root & data payload fields for compatibility)
+    // Step 2: Request access token with password grant using the login_token
     const tokenPayload: any = {
       client_id: CLIENT_ID,
       grant_type: 'password',
-      email: targetEmail,
-      username: targetEmail,
-      password: targetPassword,
       data: {
-        email: targetEmail,
-        username: targetEmail,
+        login_token: loginToken,
         password: targetPassword,
-        ...(loginToken ? { login_token: loginToken } : {}),
       },
-      ...(loginToken ? { login_token: loginToken } : {}),
     };
 
     const tokenRes = await this.postJson(`${BASE_URL}/goid/token`, headers, tokenPayload);
