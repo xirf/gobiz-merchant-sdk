@@ -237,6 +237,15 @@ export class GoBizPortalService {
     }
 
     this.token = accessToken;
+
+    if (this.config.onTokenUpdate) {
+      try {
+        await this.config.onTokenUpdate(this.token!);
+      } catch (callbackErr) {
+        console.warn('[GoBizPortal] onTokenUpdate callback error:', callbackErr);
+      }
+    }
+
     return this.token!;
   }
 
@@ -246,7 +255,6 @@ export class GoBizPortalService {
   public setCookieToken(token: string): void {
     this.token = token;
     this.config.token = token;
-    this.config.authMethod = 'cookie';
   }
 
   /**
@@ -254,6 +262,11 @@ export class GoBizPortalService {
    */
   public async getAccessToken(): Promise<string> {
     if (this.token) {
+      return this.token;
+    }
+
+    if (this.config.token) {
+      this.token = this.config.token;
       return this.token;
     }
 
@@ -292,8 +305,8 @@ export class GoBizPortalService {
    * Raw low-level fetch for GoBiz Merchant Analytics transactions
    */
   private async fetchRawTransactions(options: { from?: string; to?: string } = {}): Promise<PortalTransactionItem[]> {
-    const token = await this.getAccessToken();
-    const headers = this.getPortalHeaders(token);
+    let token = await this.getAccessToken();
+    let headers = this.getPortalHeaders(token);
 
     let merchantId = this.merchantId || this.config.merchantId;
     if (!merchantId) {
@@ -321,7 +334,22 @@ export class GoBizPortalService {
     }
 
     const url = `${ANALYTICS_URL}?${queryParams.toString()}`;
-    const res = await this.getJson(url, headers);
+    let res: any;
+
+    try {
+      res = await this.getJson(url, headers);
+    } catch (err: any) {
+      // Auto re-login if token expired (401) and password credentials exist
+      if (err?.status === 401 && (this.config.password || this.config.email)) {
+        console.warn('[GoBizPortal] Session expired (401), re-authenticating with password...');
+        this.token = null;
+        token = await this.loginWithPassword();
+        headers = this.getPortalHeaders(token);
+        res = await this.getJson(url, headers);
+      } else {
+        throw err;
+      }
+    }
 
     const rawList = Array.isArray(res) ? res : res.data || res.transactions || [];
 

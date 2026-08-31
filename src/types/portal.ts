@@ -17,6 +17,7 @@ export interface GoBizPortalConfig {
   webhookUrl?: string;
   webhookSecret?: string;
   timeout?: number;
+  onTokenUpdate?: (token: string) => Promise<void> | void;
   fetch?: typeof globalThis.fetch;
 }
 
